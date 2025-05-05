@@ -17,20 +17,42 @@ struct LineWebhookController: RouteCollection {
             // LINEのWebhookから送られたJSONをデコード
             let body = try req.content.decode(LineWebhookPayload.self)
             print("✅ Received LINE event: \(body).")
-            for event in body.events {
-                print("✅ Received Events.")
-                if event.type == "message", let message = event.message, message.type == "text", let text = message.text, let replyToken = event.replyToken {
-                    print("✅ Receive Events Texts.")
-                    do {
-                        try await reply(to: replyToken, with: text, client: req.client)
-                        print("✅ Handle Success!")
-                    } catch {
-                        print("⚠️ Handle Failed...")
-                        print("⚠️ Error: \(error)")
-                    }
+            guard let event = body.events.first (where: { $0.type == "message" }) else { return .notFound }
+            print("✅ Received Events.")
+            if event.type == "message", let message = event.message, message.type == "text", let text = message.text, let replyToken = event.replyToken {
+                print("✅ Receive Events Texts.")
+                do {
+                    try await reply(to: replyToken, with: text, client: req.client)
+                    print("✅ Handle Success!")
+                    return .ok
+                } catch {
+                    print("⚠️ Handle Failed...")
+                    print("⚠️ Error: \(error)")
+                    return .notFound
                 }
+            } else {
+                print("⚠️ Script Failed...")
+                return .notFound
             }
-            return .ok
+            
+//            for event in body.events {
+//                print("✅ Received Events.")
+//                if event.type == "message", let message = event.message, message.type == "text", let text = message.text, let replyToken = event.replyToken {
+//                    print("✅ Receive Events Texts.")
+//                    do {
+//                        try await reply(to: replyToken, with: text, client: req.client)
+//                        print("✅ Handle Success!")
+//                        return .ok
+//                    } catch {
+//                        print("⚠️ Handle Failed...")
+//                        print("⚠️ Error: \(error)")
+//                        return .notFound
+//                    }
+//                } else {
+//                    print("⚠️ Script Failed...")
+//                    return .notFound
+//                }
+//            }
         } catch {
             print("⚠️ Received LINE event Error.")
             return .notFound
