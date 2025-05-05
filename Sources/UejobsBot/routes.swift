@@ -14,9 +14,6 @@ func routes(_ app: Application) throws {
         "jobs!"
     }
 
-    let lineController = LineWebhookController()
-    app.post("webhook", use: lineController.receive(_:))
-    app.post("callback", use: lineController.receive(_:))
-    
     try app.register(collection: TodoController())
+    try app.register(collection: LineWebhookController())
 }

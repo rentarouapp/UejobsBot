@@ -37,25 +37,6 @@ struct LineWebhookController: RouteCollection {
                 print("⚠️ Script Failed...")
                 return .notFound
             }
-            
-//            for event in body.events {
-//                print("✅ Received Events.")
-//                if event.type == "message", let message = event.message, message.type == "text", let text = message.text, let replyToken = event.replyToken {
-//                    print("✅ Receive Events Texts.")
-//                    do {
-//                        try await reply(to: replyToken, with: text, client: req.client)
-//                        print("✅ Handle Success!")
-//                        return .ok
-//                    } catch {
-//                        print("⚠️ Handle Failed...")
-//                        print("⚠️ Error: \(error)")
-//                        return .notFound
-//                    }
-//                } else {
-//                    print("⚠️ Script Failed...")
-//                    return .notFound
-//                }
-//            }
         } catch {
             print("⚠️ Received LINE event Error.")
             return .notFound
