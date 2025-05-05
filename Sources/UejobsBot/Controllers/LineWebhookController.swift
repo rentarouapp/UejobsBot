@@ -21,18 +21,23 @@ struct LineWebhookController: RouteCollection {
                 print("⚠️ Event is Empty...")
                 return .notFound
             }
-            switch event.type {
-            case "message":
+            guard let message = event.message else {
+                print("⚠️ Received, But ['message'] is nil...")
+                return .notFound
+            }
+            switch message.type {
+            case "text":
                 // テキストメッセージが送られた
                 return try await handleText(event: event, req: req)
             case "location":
                 // 場所情報が送られた
                 return try await handleLocation(event: event, req: req)
             default:
+                print("⚠️ Received LINE event Error.")
                 return .notFound
             }
         } catch {
-            print("⚠️ Received LINE event Error.")
+            print("⚠️ Received, But Not Expected Message Type...")
             return .notFound
         }
     }
@@ -65,7 +70,6 @@ extension LineWebhookController {
     // テキストメッセージのハンドリング
     private func handleText(event: LineEvent, req: Request) async throws -> HTTPStatus {
         guard let message = event.message,
-              message.type == "text",
               let text = message.text,
               let replyToken = event.replyToken else {
             print("⚠️ Received, But Not Text Event...")
@@ -86,7 +90,6 @@ extension LineWebhookController {
     // 緯度経度のハンドリング
     private func handleLocation(event: LineEvent, req: Request) async throws -> HTTPStatus {
         guard let message = event.message,
-              message.type == "location",
               let lat = message.latitude,
               let lon = message.longitude,
               let replyToken = event.replyToken else {
