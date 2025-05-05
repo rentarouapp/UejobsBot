@@ -24,7 +24,11 @@ struct LineSource: Content {
 }
 
 struct LineMessage: Content {
-    let id: String
     let type: String
     let text: String?
+}
+
+struct LineReplyBody: Content {
+    let replyToken: String
+    let messages: [LineMessage]
 }
