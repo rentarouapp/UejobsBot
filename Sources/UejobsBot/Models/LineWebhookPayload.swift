@@ -26,6 +26,9 @@ struct LineSource: Content {
 struct LineMessage: Content {
     let type: String
     let text: String?
+    var address: String? = nil
+    var latitude: Double? = nil
+    var longitude: Double? = nil
 }
 
 struct LineReplyBody: Content {

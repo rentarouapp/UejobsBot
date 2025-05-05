@@ -12,29 +12,23 @@ struct LineWebhookController: RouteCollection {
         routes.post("callback", use: handle)
     }
     
-    func handle(req: Request) async throws -> HTTPStatus {
+    private func handle(req: Request) async throws -> HTTPStatus {
         do {
             // LINEのWebhookから送られたJSONをデコード
             let body = try req.content.decode(LineWebhookPayload.self)
             print("✅ Received LINE event: \(body).")
-            guard let event = body.events.first (where: { $0.type == "message" }) else {
-                print("⚠️ Event Pick Failed...")
+            guard let event = body.events.first else {
+                print("⚠️ Event is Empty...")
                 return .notFound
             }
-            print("✅ Received Events.")
-            if event.type == "message", let message = event.message, message.type == "text", let text = message.text, let replyToken = event.replyToken {
-                print("✅ Receive Events Texts.")
-                do {
-                    try await reply(to: replyToken, with: text, client: req.client)
-                    print("✅ Handle Success!")
-                    return .ok
-                } catch {
-                    print("⚠️ Handle Failed...")
-                    print("⚠️ Error: \(error)")
-                    return .notFound
-                }
-            } else {
-                print("⚠️ Script Failed...")
+            switch event.type {
+            case "message":
+                // テキストメッセージが送られた
+                return try await handleText(event: event, req: req)
+            case "location":
+                // 場所情報が送られた
+                return try await handleLocation(event: event, req: req)
+            default:
                 return .notFound
             }
         } catch {
@@ -65,16 +59,49 @@ struct LineWebhookController: RouteCollection {
             print("⚠️ Error: \(error)")
         }
     }
-    
-    func receive(_ req: Request) async throws -> HTTPStatus {
-        // LINEのWebhookから送られたJSONをデコード
+}
+
+extension LineWebhookController {
+    // テキストメッセージのハンドリング
+    private func handleText(event: LineEvent, req: Request) async throws -> HTTPStatus {
+        guard let message = event.message,
+              message.type == "text",
+              let text = message.text,
+              let replyToken = event.replyToken else {
+            print("⚠️ Received, But Not Text Event...")
+            return .notFound
+        }
+        print("✅ Received Text Event.")
         do {
-            let body = try req.content.decode(LineWebhookPayload.self)
-            // ここでイベント内容に応じた処理を行う
-            print("✅ Received LINE event: \(body).")
+            try await reply(to: replyToken, with: text, client: req.client)
+            print("✅ Text Reply Success!")
             return .ok
         } catch {
-            print("⚠️ Received LINE event Error.")
+            print("⚠️ Text Reply Failed...")
+            print("⚠️ Text Reply Error: \(error)")
+            return .notFound
+        }
+    }
+    
+    // 緯度経度のハンドリング
+    private func handleLocation(event: LineEvent, req: Request) async throws -> HTTPStatus {
+        guard let message = event.message,
+              message.type == "location",
+              let lat = message.latitude,
+              let lon = message.longitude,
+              let replyToken = event.replyToken else {
+            print("⚠️ Received, But Not Location Event...")
+            return .notFound
+        }
+        print("✅ Receive Location Event.")
+        let replyText = "それはここかな：\n住所: \(message.address ?? "")\n緯度: \(lat)\n経度: \(lon)"
+        do {
+            try await reply(to: replyToken, with: replyText, client: req.client)
+            print("✅ Location Reply Success!")
+            return .ok
+        } catch {
+            print("⚠️ Location Reply Failed...")
+            print("⚠️ Location Reply Error: \(error)")
             return .notFound
         }
     }
