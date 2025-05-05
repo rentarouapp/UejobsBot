@@ -41,7 +41,15 @@ struct LineWebhookController: RouteCollection {
                 LineMessage(type: "text", text: text)
             ]
         )
-        let _ = try await client.post(url, headers: headers, content: body)
+        print("💡 Header: \(headers)")
+        print("🤖 Body: \(body)")
+        do {
+            let _ = try await client.post(url, headers: headers, content: body)
+            print("✅ Post Success!")
+        } catch {
+            print("⚠️ Post Failed...")
+            print("⚠️ Error: \(error)")
+        }
     }
     
     func receive(_ req: Request) async throws -> HTTPStatus {
