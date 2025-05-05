@@ -17,7 +17,10 @@ struct LineWebhookController: RouteCollection {
             // LINEのWebhookから送られたJSONをデコード
             let body = try req.content.decode(LineWebhookPayload.self)
             print("✅ Received LINE event: \(body).")
-            guard let event = body.events.first (where: { $0.type == "message" }) else { return .notFound }
+            guard let event = body.events.first (where: { $0.type == "message" }) else {
+                print("⚠️ Event Pick Failed...")
+                return .notFound
+            }
             print("✅ Received Events.")
             if event.type == "message", let message = event.message, message.type == "text", let text = message.text, let replyToken = event.replyToken {
                 print("✅ Receive Events Texts.")
