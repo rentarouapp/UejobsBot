@@ -42,17 +42,15 @@ struct LineWebhookController: RouteCollection {
         }
     }
     
-    private func reply(to token: String, with text: String, client: any Client) async throws {
+    private func reply(lineMessage: LineMessage, replyToken: String, client: any Client) async throws {
         let url = URI(string: "https://api.line.me/v2/bot/message/reply")
         let headers: HTTPHeaders = [
             "Authorization": "Bearer \(Environment.get("LINE_CHANNEL_ACCESS_TOKEN") ?? "")",
             "Content-Type": "application/json"
         ]
         let body = LineReplyBody(
-            replyToken: token,
-            messages: [
-                LineMessage(type: "text", text: text)
-            ]
+            replyToken: replyToken,
+            messages: [lineMessage]
         )
         print("💡 Header: \(headers)")
         print("🤖 Body: \(body)")
@@ -69,15 +67,17 @@ struct LineWebhookController: RouteCollection {
 extension LineWebhookController {
     // テキストメッセージのハンドリング
     private func handleText(event: LineEvent, req: Request) async throws -> HTTPStatus {
-        guard let message = event.message,
-              let text = message.text,
-              let replyToken = event.replyToken else {
+        guard let replyToken = event.replyToken else {
+            print("⚠️ Received, But Not ReplyToken...")
+            return .notFound
+        }
+        guard let lineMessage = TextUtil.lineMessageFromTextTypeEvent(event: event) else {
             print("⚠️ Received, But Not Text Event...")
             return .notFound
         }
-        print("✅ Received Text Event.")
+        print("✅ Generate LineMessage.")
         do {
-            try await reply(to: replyToken, with: text, client: req.client)
+            try await reply(lineMessage: lineMessage, replyToken: replyToken, client: req.client)
             print("✅ Text Reply Success!")
             return .ok
         } catch {
@@ -89,17 +89,17 @@ extension LineWebhookController {
     
     // 緯度経度のハンドリング
     private func handleLocation(event: LineEvent, req: Request) async throws -> HTTPStatus {
-        guard let message = event.message,
-              let lat = message.latitude,
-              let lon = message.longitude,
-              let replyToken = event.replyToken else {
+        guard let replyToken = event.replyToken else {
+            print("⚠️ Received, But Not ReplyToken...")
+            return .notFound
+        }
+        guard let lineMessage = LocationUtil.lineMessageFromLocationTypeEvent(event: event) else {
             print("⚠️ Received, But Not Location Event...")
             return .notFound
         }
-        print("✅ Receive Location Event.")
-        let replyText = "それはここかな：\n住所: \(message.address ?? "")\n緯度: \(lat)\n経度: \(lon)"
+        print("✅ Generate LineMessage.")
         do {
-            try await reply(to: replyToken, with: replyText, client: req.client)
+            try await reply(lineMessage: lineMessage, replyToken: replyToken, client: req.client)
             print("✅ Location Reply Success!")
             return .ok
         } catch {

@@ -25,10 +25,31 @@ struct LineSource: Content {
 
 struct LineMessage: Content {
     let type: String
-    let text: String?
+    // テキスト
+    var text: String? = nil
+    // 位置情報
     var address: String? = nil
     var latitude: Double? = nil
     var longitude: Double? = nil
+    // Templete（画像、ボタン）
+    var altText: String? = nil
+    var template: LineMessageTemplate? = nil
+}
+
+struct LineMessageTemplate: Content {
+    let type: String
+    let thumbnailImageUrl: String?
+    let title: String
+    let text: String
+    let actions: [LineMessageAction]
+}
+
+// MARK: - アクション（URI or Postback）
+struct LineMessageAction: Content {
+    let type: String
+    let label: String
+    let uri: String?
+    let data: String?
 }
 
 struct LineReplyBody: Content {
