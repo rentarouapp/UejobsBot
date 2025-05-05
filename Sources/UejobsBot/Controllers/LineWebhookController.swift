@@ -18,8 +18,16 @@ struct LineWebhookController: RouteCollection {
             let body = try req.content.decode(LineWebhookPayload.self)
             print("✅ Received LINE event: \(body).")
             for event in body.events {
+                print("✅ Received Events.")
                 if event.type == "message", let message = event.message, message.type == "text", let text = message.text, let replyToken = event.replyToken {
-                    try await reply(to: replyToken, with: text, client: req.client)
+                    print("✅ Receive Events Texts.")
+                    do {
+                        try await reply(to: replyToken, with: text, client: req.client)
+                        print("✅ Handle Success!")
+                    } catch {
+                        print("⚠️ Handle Failed...")
+                        print("⚠️ Error: \(error)")
+                    }
                 }
             }
             return .ok
