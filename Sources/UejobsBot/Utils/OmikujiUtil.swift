@@ -8,7 +8,7 @@
 import Foundation
 
 struct OmikujiUtil {
-    static func lineMessage(from event: LineEvent) throws -> LineMessage {
-        throw NSError()
-    }
+//    static func lineMessage(from event: LineEvent) throws -> LineMessage {
+//        throw NSError()
+//    }
 }
