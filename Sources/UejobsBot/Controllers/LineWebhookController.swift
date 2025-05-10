@@ -11,101 +11,79 @@ struct LineWebhookController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         routes.post("callback", use: handle)
     }
-    
+}
+
+private extension LineWebhookController {
     private func handle(req: Request) async throws -> HTTPStatus {
         do {
-            // LINEのWebhookから送られたJSONをデコード
-            let body = try req.content.decode(LineWebhookPayload.self)
-            print("✅ Received LINE event: \(body).")
-            guard let event = body.events.first else {
-                print("⚠️ Event is Empty...")
-                return .notFound
-            }
-            guard let message = event.message else {
-                print("⚠️ Received, But ['message'] is nil...")
-                return .notFound
-            }
-            switch message.type {
-            case "text":
-                // テキストメッセージが送られた
-                return try await handleText(event: event, req: req)
-            case "location":
-                // 場所情報が送られた
-                return try await handleLocation(event: event, req: req)
-            default:
-                print("⚠️ Received LINE event Error.")
-                return .notFound
-            }
+            print("✅ Received LINE event.")
+            // ラインメッセージ作る
+            let lineMessage = try LineMessageGenerator.lineMessage(req: req)
+            // リプライする
+            return try await reply(lineMessage: lineMessage, req: req)
         } catch {
-            print("⚠️ Received, But Not Expected Message Type...")
-            return .notFound
+            throw error
         }
     }
     
-    private func reply(lineMessage: LineMessage, replyToken: String, client: any Client) async throws {
+    private func reply(lineMessage: LineMessage, req: Request) async throws -> HTTPStatus {
+        let body = try req.content.decode(LineWebhookPayload.self)
+        guard let event = body.events.first else {
+            throw LineWebhookError.payloadEventIsEmpty
+        }
+        guard let replyToken = event.replyToken else {
+            throw LineWebhookError.replyTokenNotFound
+        }
         let url = URI(string: "https://api.line.me/v2/bot/message/reply")
         let headers: HTTPHeaders = [
             "Authorization": "Bearer \(Environment.get("LINE_CHANNEL_ACCESS_TOKEN") ?? "")",
             "Content-Type": "application/json"
         ]
-        let body = LineReplyBody(
+        let lineReplyBody = LineReplyBody(
             replyToken: replyToken,
             messages: [lineMessage]
         )
         print("💡 Header: \(headers)")
-        print("🤖 Body: \(body)")
+        print("🤖 Body: \(lineReplyBody)")
         do {
-            let _ = try await client.post(url, headers: headers, content: body)
-            print("✅ Post Success!")
+            let response = try await req.client.post(url, headers: headers, content: lineReplyBody)
+            return response.status
         } catch {
-            print("⚠️ Post Failed...")
-            print("⚠️ Error: \(error)")
+            throw error
         }
     }
 }
 
-extension LineWebhookController {
-    // テキストメッセージのハンドリング
-    private func handleText(event: LineEvent, req: Request) async throws -> HTTPStatus {
-        guard let replyToken = event.replyToken else {
-            print("⚠️ Received, But Not ReplyToken...")
-            return .notFound
-        }
-        guard let lineMessage = TextUtil.lineMessageFromTextTypeEvent(event: event) else {
-            print("⚠️ Received, But Not Text Event...")
-            return .notFound
-        }
-        print("✅ Generate LineMessage.")
-        do {
-            try await reply(lineMessage: lineMessage, replyToken: replyToken, client: req.client)
-            print("✅ Text Reply Success!")
-            return .ok
-        } catch {
-            print("⚠️ Text Reply Failed...")
-            print("⚠️ Text Reply Error: \(error)")
-            return .notFound
-        }
-    }
+enum ReceiveMessageType: String {
+    case text = "text"
+    case location = "location"
+}
+
+enum LineWebhookError: Error {
+    case payloadEventIsEmpty
+    case lineEventMessageIsNil
+    case lineReceiveMessageTypeNotMatch(String)
+    case replyTokenNotFound
+    case generateLineMessageFailed(ReceiveMessageType)
+    case replyLineMessageFailed(NSError)
+    case handleLineEventFailed(String)
     
-    // 緯度経度のハンドリング
-    private func handleLocation(event: LineEvent, req: Request) async throws -> HTTPStatus {
-        guard let replyToken = event.replyToken else {
-            print("⚠️ Received, But Not ReplyToken...")
-            return .notFound
-        }
-        guard let lineMessage = LocationUtil.lineMessageFromLocationTypeEvent(event: event) else {
-            print("⚠️ Received, But Not Location Event...")
-            return .notFound
-        }
-        print("✅ Generate LineMessage.")
-        do {
-            try await reply(lineMessage: lineMessage, replyToken: replyToken, client: req.client)
-            print("✅ Location Reply Success!")
-            return .ok
-        } catch {
-            print("⚠️ Location Reply Failed...")
-            print("⚠️ Location Reply Error: \(error)")
-            return .notFound
+    var localizedDescription: String {
+        switch self {
+        case .payloadEventIsEmpty:
+            return "⚠️ Event is empty..."
+        case .lineEventMessageIsNil:
+            return "⚠️ Received, but ['message'] is nil..."
+        case .lineReceiveMessageTypeNotMatch(let receiveMessageType):
+            return "⚠️ ReceiveMessageType(\(receiveMessageType)) not match."
+        case .replyTokenNotFound:
+            return "⚠️ ReplyToken is not found."
+        case .generateLineMessageFailed(let receiveMessageType):
+            return "⚠️ GenerateLineMessage failed... receiveMessageType(\(receiveMessageType))"
+        case .replyLineMessageFailed(let error):
+            return "⚠️ Reply lineMessage failed... Error(\(error))"
+        case .handleLineEventFailed(let reason):
+            return "⚠️ Handle lineEvent failed because \(reason)..."
         }
     }
 }

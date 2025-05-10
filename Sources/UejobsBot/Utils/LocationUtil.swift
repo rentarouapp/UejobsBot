@@ -7,15 +7,13 @@
 
 import Vapor
 
-enum LocationUtil {
-    // AppleStoreをもらって最終的なLineMessageを返す
-    static func lineMessageFromLocationTypeEvent(event: LineEvent) -> LineMessage? {
+struct LocationUtil {
+    // LineEventをもらって送付するLineMessageを返す
+    static func lineMessage(from event: LineEvent) throws -> LineMessage {
         guard let message = event.message,
               let lat = message.latitude,
-              let lon = message.longitude,
-              let replyToken = event.replyToken else {
-            print("⚠️ lineMessageFromLocationTypeEvent Failed.")
-            return nil
+              let lon = message.longitude else {
+            throw LineWebhookError.handleLineEventFailed("[message], [lat], [lon] cannot be handled")
         }
         // 仮でスタブのApple Storeを返してみる
         let store: AppleStore = .init(
@@ -25,12 +23,12 @@ enum LocationUtil {
             url: "https://www.apple.com/jp/retail/shinjuku/",
             distance: 1.23
         )
-        return lineMessageFromAppleStore(store: store)
+        return generateLineMessageFromAppleStore(store: store)
     }
 }
 
 private extension LocationUtil {
-    static func lineMessageFromAppleStore(store: AppleStore) -> LineMessage {
+    static func generateLineMessageFromAppleStore(store: AppleStore) -> LineMessage {
         let lineMessageActions = [
             LineMessageAction(type: "uri", label: "サイトを見る", uri: store.url, data: nil),
             LineMessageAction(type: "postback", label: "場所を見る", uri: nil, data: "store_\(store.id)")

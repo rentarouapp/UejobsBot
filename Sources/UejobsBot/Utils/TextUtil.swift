@@ -7,13 +7,12 @@
 
 import Vapor
 
-enum TextUtil {
+struct TextUtil {
     // テキストメッセージをもらってLineMessageを返す
-    static func lineMessageFromTextTypeEvent(event: LineEvent) -> LineMessage? {
+    static func lineMessage(from event: LineEvent) throws -> LineMessage {
         guard let message = event.message,
               let text = message.text else {
-            print("⚠️ generateLineMessageFromReplyText Failed.")
-            return nil
+            throw LineWebhookError.handleLineEventFailed("[message], [text] cannot be handled")
         }
         return LineMessage(type: "text", text: text) // 仮でオウム返ししておく
     }
