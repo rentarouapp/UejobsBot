@@ -7,6 +7,11 @@
 
 import Vapor
 
+enum ReceiveMessageType: String {
+    case text = "text"
+    case location = "location"
+}
+
 struct LineMessageGenerator {
     static func lineMessage(req: Request) throws -> LineMessage {
         let body = try req.content.decode(LineWebhookPayload.self)
