@@ -17,6 +17,13 @@ private extension LineWebhookController {
     private func handle(req: Request) async throws -> HTTPStatus {
         do {
             print("✅ Received LINE event.")
+            let body = try req.content.decode(LineWebhookPayload.self)
+            if body.events.isEmpty {
+                // eventsが空なら確認用リクエストという扱いにしてただ.okを返しておく
+                // LINE DeveloperのコンソールからのVerifyで、疎通できているのにエラーが返ってくると気持ち悪いため
+                print("🗑️ Events is Empty.")
+                return .ok
+            }
             // ラインメッセージ作る
             let lineMessage = try LineMessageGenerator.lineMessage(req: req)
             // リプライする
